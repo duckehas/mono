@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Professional Editor</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/editor/editor.main.css">
+<style>
+    body {
+        margin: 0;
+        display: flex;
+        font-family: 'Segoe UI', sans-serif;
+        height: 100vh;
+        background-color: #2e2e2e;
+        overflow: hidden;
+    }
+
+    /* Tab Bar */
+    #left-panel {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        height: 100%;
+    }
+
+    .tab-bar {
+        display: flex;
+        align-items: center;
+        background-color: #3a3a3a;
+        padding: 2px 5px;
+        overflow-x: auto;
+        height: 35px;
+    }
+    .tab {
+        display: flex;
+        align-items: center;
+        background-color: #444;
+        color: #fff;
+        padding: 5px 8px;
+        margin-right: 3px;
+        font-size: 12px;
+        border-radius: 3px 3px 0 0;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s ease;
+    }
+    .tab:hover {
+        background-color: #555;
+        transform: translateY(-2px);
+    }
+    .tab.active {
+        background-color: #2a2a2a;
+        border-bottom: 2px solid #00bfff;
+    }
+    .tab .close-btn {
+        margin-left: 5px;
+        color: #ff5c5c;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .add-tab {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #555;
+        color: #fff;
+        width: 25px;
+        height: 25px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 18px;
+        margin-left: 5px;
+        transition: all 0.2s ease;
+    }
+    .add-tab:hover {
+        background-color: #666;
+        transform: translateY(-2px);
+    }
+
+    /* Editor container */
+    #editor-container {
+        flex-grow: 1;
+        height: calc(100vh - 35px);
+    }
+
+    /* Workspace panel */
+    #workspace {
+        width: 250px;
+        background-color: #3a3a3a;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+        padding: 10px;
+        overflow-y: auto;
+    }
+    #workspace h3 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-size: 16px;
+    }
+    #workspace button {
+        background-color: #555;
+        border: none;
+        color: #fff;
+        padding: 5px 10px;
+        margin-bottom: 5px;
+        cursor: pointer;
+        border-radius: 3px;
+        transition: all 0.2s ease;
+    }
+    #workspace button:hover {
+        background-color: #666;
+        transform: translateY(-2px);
+    }
+    #workspace ul {
+        list-style: none;
+        padding: 0;
+    }
+    #workspace li {
+        padding: 5px;
+        cursor: pointer;
+        border-radius: 3px;
+        transition: all 0.2s ease;
+    }
+    #workspace li:hover {
+        background-color: #555;
+        transform: translateX(2px);
+    }
+</style>
+</head>
+<body>
+
+<div id="left-panel">
+    <div class="tab-bar" id="tab-bar">
+        <div class="tab active" data-file="script.lua">script.lua<span class="close-btn">x</span></div>
+        <div class="tab" data-file="config.lua">config.lua<span class="close-btn">x</span></div>
+        <div class="add-tab">+</div>
+    </div>
+    <div id="editor-container"></div>
+</div>
+
+<div id="workspace">
+    <h3>Workspace</h3>
+    <button id="save-btn">Save File</button>
+    <button id="open-btn">Open File</button>
+    <ul id="file-list">
+        <!-- Files will appear here -->
+    </ul>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js"></script>
+<script>
+require.config({ paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs' }});
+require(['vs/editor/editor.main'], function () {
+    const editor = monaco.editor.create(document.getElementById('editor-container'), {
+        value: "-- Lua code here\nprint('Hello world')",
+        language: 'lua',
+        theme: 'vs-dark',
+        automaticLayout: true,
+        fontSize: 14,
+    });
+
+    const tabBar = document.getElementById('tab-bar');
+    const fileList = document.getElementById('file-list');
+
+    function activateTab(tab) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        editor.setValue(tab.dataset.content || `-- Editing ${tab.dataset.file}\n`);
+    }
+
+    // Initialize existing tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.dataset.content = `-- Editing ${tab.dataset.file}\n`;
+        tab.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('close-btn')) activateTab(tab);
+        });
+        tab.querySelector('.close-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (tab.classList.contains('active')) {
+                const nextTab = tab.previousElementSibling || tab.nextElementSibling;
+                if (nextTab && nextTab.classList.contains('tab')) activateTab(nextTab);
+            }
+            tab.remove();
+        });
+    });
+
+    // Add new tab
+    const addTabBtn = document.querySelector('.add-tab');
+    let tabCounter = 3;
+    addTabBtn.addEventListener('click', () => {
+        const newTab = document.createElement('div');
+        newTab.className = 'tab';
+        newTab.dataset.file = `newfile${tabCounter}.lua`;
+        newTab.dataset.content = "";
+        newTab.innerHTML = `newfile${tabCounter}.lua<span class="close-btn">x</span>`;
+        tabBar.insertBefore(newTab, addTabBtn);
+        tabCounter++;
+
+        newTab.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('close-btn')) activateTab(newTab);
+        });
+        newTab.querySelector('.close-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (newTab.classList.contains('active')) {
+                const nextTab = newTab.previousElementSibling || newTab.nextElementSibling;
+                if (nextTab && nextTab.classList.contains('tab')) activateTab(nextTab);
+            }
+            newTab.remove();
+        });
+
+        activateTab(newTab);
+    });
+
+    // Typing sound
+    const typeSound = new Audio('https://freesound.org/data/previews/341/341695_6243126-lq.mp3');
+    editor.onKeyDown(() => {
+        typeSound.currentTime = 0;
+        typeSound.play();
+    });
+
+    // Workspace: Save and Open simulation
+    const saveBtn = document.getElementById('save-btn');
+    const openBtn = document.getElementById('open-btn');
+
+    function updateFileList() {
+        fileList.innerHTML = '';
+        document.querySelectorAll('.tab').forEach(tab => {
+            const li = document.createElement('li');
+            li.textContent = tab.dataset.file;
+            li.addEventListener('click', () => activateTab(tab));
+            fileList.appendChild(li);
+        });
+    }
+
+    saveBtn.addEventListener('click', () => {
+        const activeTab = document.querySelector('.tab.active');
+        if (activeTab) {
+            activeTab.dataset.content = editor.getValue();
+            updateFileList();
+            alert(`Saved ${activeTab.dataset.file}`);
+        }
+    });
+
+    openBtn.addEventListener('click', () => {
+        updateFileList();
+        alert('Workspace updated');
+    });
+
+    // Initialize file list
+    updateFileList();
+});
+</script>
+</body>
+</html>
